@@ -338,10 +338,26 @@ function Hub(myId){
     onPeers(h){hs.push(h);sched();return()=>{const i=hs.indexOf(h);if(i>=0)hs.splice(i,1)}}
   };
 }
-function hostRoom(code){
+/* 中繼伺服器（TURN）：直連被網路擋住時改走中繼。使用 Metered Open Relay 的公開共用金鑰（每次產生 24 小時有效的帳密）。 */
+const TURN_HOST='staticauth.openrelay.metered.ca',TURN_SECRET='openrelayprojectsecret';
+let iceCache=null;
+async function iceConfig(){
+  const base=[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']}];
+  try{
+    if(iceCache&&iceCache.exp>Date.now()/1000+3600)return iceCache.cfg;
+    const exp=Math.floor(Date.now()/1000)+86400,username=exp+':puffer';
+    const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(TURN_SECRET),{name:'HMAC',hash:'SHA-1'},false,['sign']);
+    const sig=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(username)));
+    const credential=btoa(String.fromCharCode(...sig));
+    const cfg={iceServers:[...base,{urls:['turn:'+TURN_HOST+':80','turn:'+TURN_HOST+':80?transport=tcp','turn:'+TURN_HOST+':443','turns:'+TURN_HOST+':443?transport=tcp'],username,credential}]};
+    iceCache={exp,cfg};return cfg;
+  }catch(e){return{iceServers:base}}
+}
+async function hostRoom(code){
+  const ice=await iceConfig();
   return new Promise((resolve,reject)=>{
     const id=PREFIX+code.toLowerCase();
-    const peer=new Peer(id,{debug:0});
+    const peer=new Peer(id,{debug:0,config:ice});
     const hub=Hub(id),conns=new Map(),seenAt=new Map();
     let bt=0,opened=false,dead=false,hb=0;
     function bcast(){
@@ -388,14 +404,17 @@ function hostRoom(code){
     },3000);
   });
 }
-function clientRoom(code){
+async function clientRoom(code){
+  const ice=await iceConfig();
   return new Promise((resolve,reject)=>{
     const hid=PREFIX+code.toLowerCase();
-    const peer=new Peer({debug:0});
+    const peer=new Peer({debug:0,config:ice});
     let hub=null,conn=null,done=false,last=Date.now(),myId=null,mine={},hb=0;
     const notFound=`找不到代碼 ${code} 的房間。確認代碼是否正確，或請主持人先建立房間。`;
     function fail(m){if(done)return;done=true;clearTimeout(to);clearInterval(hb);try{peer.destroy()}catch(e){}reject({msg:m})}
-    const to=setTimeout(()=>fail(notFound),12000);
+    const blocked='找到房間了，但連線建立失敗，可能是目前的網路擋住了連線。可以試試：換一個網路（例如手機熱點）、關掉 VPN，或換一個瀏覽器再加入。';
+    let reached=false;
+    const to=setTimeout(()=>fail(reached?blocked:notFound),20000);
     function lost(){if(!hub)return;for(const o of hub.all())if(o.peer!==myId)hub.del(o.peer)}
     const api={
       presence(patch){mine=merge(mine,patch);if(hub)hub.set(myId,mine);try{if(conn&&conn.open)conn.send({t:'p',p:patch})}catch(e){}return Promise.resolve()},
@@ -407,6 +426,7 @@ function clientRoom(code){
     peer.on('open',pid=>{
       myId=pid;hub=Hub(pid);
       conn=peer.connect(hid,{reliable:true});
+      setTimeout(()=>{if(!done)reached=true},4000); // 4 秒內沒收到「房間不存在」，代表房間在，只是連不上
       conn.on('open',()=>{
         if(done)return;done=true;clearTimeout(to);last=Date.now();
         hub.set(myId,mine);resolve(api);
