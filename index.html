@@ -232,6 +232,8 @@ body{margin:0}
     <div class="setting"><div>連續超時就換題<small>同一題連續幾次超時，就公布答案並換下一題</small></div><div class="stepper" data-k="stuck" data-min="1" data-max="9"><button aria-label="減少">−</button><output></output><button aria-label="增加">＋</button></div></div>
     <div class="setting"><div>回血搶答<small>每幾輪出一題超難搶答，第一個答對的人回復 1 條命（0 為關閉）</small></div><div class="stepper" data-k="bonus" data-min="0" data-max="9"><button aria-label="減少">−</button><output></output><button aria-label="增加">＋</button></div></div>
     <div class="setting"><div>功能卡<small>答對時有機率抽到卡片：時間減半、迴轉、遮住答案、完整提示、隱藏秒數、偷卡、題目反轉</small></div><button class="ghost" type="button" id="cardBtn"></button></div>
+    <div class="setting" style="align-items:flex-start"><div>回血搶答題型<small>勾選要出現的加血題</small></div></div>
+    <div class="cats" id="btypes"></div>
     <div class="setting" id="cardpRow"><div>抽卡機率（%）<small>每答對一次抽到功能卡的機率，每人最多 3 張</small></div><div class="stepper" data-k="cardp" data-min="5" data-max="100" data-step="5"><button aria-label="減少">−</button><output></output><button aria-label="增加">＋</button></div></div>
     <div class="setting"><div>答題提示<small>時間過一半時，顯示一個答案的第一個字</small></div><button class="ghost" type="button" id="hintBtn"></button></div>
   </div>
@@ -556,6 +558,16 @@ const BQ=[
  ['Altis 汽車','豐田|toyota'],['Civic 汽車','本田|honda'],['勁戰機車','山葉|yamaha'],['JET SL 機車','三陽|sym'],['雷霆 Racing 機車','光陽|kymco']
 ];
 const BONUS_MS=20000;
+const BTYPES=[
+ {id:'brand',name:'產品→公司',ask:'「%」是哪個品牌（公司）的產品？',items:BQ},
+ {id:'oldname',name:'台灣舊地名',ask:'「%」是現在台灣的哪裡？',items:[["打狗", "高雄|高雄市"], ["艋舺", "萬華|萬華區"], ["竹塹", "新竹|新竹市"], ["諸羅", "嘉義|嘉義市"], ["葫蘆墩", "豐原|豐原區"], ["阿緱", "屏東|屏東市"], ["大嵙崁", "大溪|大溪區"], ["錫口", "松山|松山區"], ["噶瑪蘭", "宜蘭|宜蘭縣"], ["雞籠", "基隆|基隆市"], ["打貓", "民雄|民雄鄉"], ["林圮埔", "竹山|竹山鎮"], ["半線", "彰化|彰化市"], ["蕃薯寮", "旗山|旗山區"], ["阿罩霧", "霧峰|霧峰區"], ["三角湧", "三峽|三峽區"], ["枋橋", "板橋|板橋區"], ["水返腳", "汐止|汐止區"], ["樸仔腳", "朴子|朴子市"], ["店仔口", "白河|白河區"], ["鹹水港", "鹽水|鹽水區"], ["灣裡", "善化|善化區"], ["蕭壠", "佳里|佳里區"], ["大目降", "新化|新化區"], ["五汊港", "梧棲|梧棲區"], ["茄苳腳", "花壇|花壇鄉"], ["二八水", "二水|二水鄉"], ["他里霧", "斗南|斗南鎮"], ["卑南", "台東|台東市|台東縣"], ["奇萊", "花蓮|花蓮市|花蓮縣"], ["大坵園", "大園|大園區"], ["澗仔壢", "中壢|中壢區"], ["咸菜甕", "關西|關西鎮"], ["樹杞林", "竹東|竹東鎮"], ["罩蘭", "卓蘭|卓蘭鎮"], ["貓裏", "苗栗|苗栗市|苗栗縣"], ["犁頭店", "南屯|南屯區"], ["頭圍", "頭城|頭城鎮"], ["叭哩沙", "三星|三星鄉"], ["大加蚋", "台北|台北市"]]},
+ {id:'founder',name:'企業創辦人',ask:'「%」的創辦人是誰？',items:[["台積電", "張忠謀|morrischang"], ["鴻海", "郭台銘|terrygou"], ["長榮集團", "張榮發"], ["誠品書店", "吳清友"], ["85度C", "吳政學"], ["王品集團", "戴勝益"], ["鼎泰豐", "楊秉彝"], ["宏碁", "施振榮|stanshih"], ["台塑集團", "王永慶"], ["統一企業", "吳修齊|高清愿"], ["宏達電 HTC", "王雪紅|卓火土|周永明"], ["捷安特", "劉金標|金標"], ["聯發科", "蔡明介"], ["康師傅", "魏應州|魏應交|魏應充|魏應行|魏家"], ["旺旺集團", "蔡衍明"], ["大立光", "林耀英|陳世卿"], ["廣達電腦", "林百里"], ["奇美實業", "許文龍"], ["微軟", "比爾蓋茲|蓋茲|蓋茨|billgates|保羅艾倫|艾倫|paulallen"], ["蘋果公司", "賈伯斯|喬布斯|stevejobs|jobs|沃茲尼克|沃茲|wozniak|韋恩|wayne"], ["亞馬遜", "貝佐斯|bezos"], ["Facebook（Meta）", "祖克柏|扎克伯格|zuckerberg"], ["阿里巴巴", "馬雲|jackma"], ["小米", "雷軍"], ["華為", "任正非"], ["Nike", "菲爾奈特|奈特|knight|鮑爾曼|bowerman"], ["Google", "佩吉|佩奇|賴利佩吉|larrypage|page|布林|謝爾蓋布林|sergeybrin|brin"], ["Uniqlo", "柳井正"], ["任天堂", "山內房治郎"], ["Sony", "盛田昭夫|井深大"], ["豐田汽車", "豐田喜一郎|豐田佐吉"], ["Panasonic（松下）", "松下幸之助"], ["本田技研", "本田宗一郎"], ["三星集團", "李秉喆"], ["肯德基", "桑德斯|山德士|哈蘭德桑德斯|sanders|肯德基爺爺|桑德斯上校"], ["IKEA", "坎普拉|英格瓦坎普拉|kamprad"], ["樂高", "克里斯蒂安森|奧勒克里斯蒂安森|christiansen"]]},
+ {id:'song',name:'歌曲原唱',ask:'《%》的原唱是誰？',items:[["小幸運", "田馥甄|hebe"], ["倔強", "五月天|mayday"], ["甜蜜蜜", "鄧麗君"], ["稻香", "周杰倫|jay"], ["告白氣球", "周杰倫|jay"], ["說好的幸福呢", "周杰倫|jay"], ["聽海", "張惠妹|阿妹|amei"], ["我的未來不是夢", "張雨生"], ["你是我的眼", "蕭煌奇"], ["至少還有你", "林憶蓮"], ["吻別", "張學友"], ["演員", "薛之謙"], ["小情歌", "蘇打綠|魚丁糸|吳青峰"], ["寶貝", "張懸|安溥"], ["修煉愛情", "林俊傑|jj"], ["江南", "林俊傑|jj"], ["不為誰而作的歌", "林俊傑|jj"], ["煎熬", "李佳薇"], ["背叛", "曹格"], ["突然好想你", "五月天|mayday"], ["光年之外", "鄧紫棋|gem"], ["泡沫", "鄧紫棋|gem"], ["浪人情歌", "伍佰"], ["挪威的森林", "伍佰"], ["鼓聲若響", "陳昇"], ["把悲傷留給自己", "陳昇"], ["新不了情", "萬芳"], ["愛的初體驗", "張震嶽"], ["那些年", "胡夏"], ["天黑黑", "孫燕姿"], ["遇見", "孫燕姿"], ["流沙", "陶喆"], ["愛很簡單", "陶喆"], ["大城小愛", "王力宏"], ["你不知道的事", "王力宏"], ["傷心太平洋", "任賢齊"], ["心太軟", "任賢齊"], ["我只在乎你", "鄧麗君"], ["十年", "陳奕迅|eason"], ["富士山下", "陳奕迅|eason"], ["好久不見", "陳奕迅|eason"]]},
+ {id:'country',name:'品牌發源國家',ask:'「%」是哪個國家的品牌？',items:[["樂高 LEGO", "丹麥"], ["Nokia", "芬蘭"], ["Zara", "西班牙"], ["IKEA", "瑞典"], ["H&M", "瑞典"], ["Volvo", "瑞典"], ["Spotify", "瑞典"], ["伊萊克斯 Electrolux", "瑞典"], ["Fjällräven 小狐狸", "瑞典"], ["Pandora 珠寶", "丹麥"], ["嘉士伯啤酒 Carlsberg", "丹麥"], ["海尼根", "荷蘭"], ["飛利浦", "荷蘭"], ["雀巢", "瑞士"], ["Swatch", "瑞士"], ["Lindt 瑞士蓮", "瑞士"], ["費列羅", "義大利|意大利"], ["Prada", "義大利|意大利"], ["Bvlgari 寶格麗", "義大利|意大利"], ["Benetton", "義大利|意大利"], ["百靈 Braun", "德國"], ["愛迪達", "德國"], ["Puma", "德國"], ["妮維雅 Nivea", "德國"], ["Lacoste", "法國"], ["歐萊雅 L'Oréal", "法國"], ["迪卡儂", "法國"], ["歐舒丹", "法國"], ["黑莓機 BlackBerry", "加拿大"], ["lululemon", "加拿大"], ["宜得利 Nitori", "日本"], ["寶僑 P&G", "美國"], ["雅詩蘭黛", "美國"], ["Zippo", "美國"], ["百威啤酒", "美國"], ["聯合利華", "英國|荷蘭"], ["殼牌 Shell", "英國|荷蘭"], ["斯柯達 Škoda", "捷克"], ["紅牛 Red Bull", "奧地利|泰國"], ["施華洛世奇", "奧地利"], ["健力士 Guinness", "愛爾蘭"], ["可樂娜啤酒 Corona", "墨西哥"], ["哈瓦仕 Havaianas", "巴西"], ["美體小舖 The Body Shop", "英國"], ["Dyson", "英國"], ["Burberry", "英國"], ["Marimekko", "芬蘭"], ["憤怒鳥 Angry Birds", "芬蘭"]]}
+];
+function bonusTypes(){const sel=ST&&ST.set&&ST.set.bt;return BTYPES.map((b,t)=>t).filter(t=>!sel||sel.includes(BTYPES[t].id))}
+function curBQ(){const b=ST.bq;return Array.isArray(b)?BTYPES[b[0]].items[b[1]]:BQ[b]}
+
 
 GEN.ly=()=>{const [full,short]=pick(LYP);
   const names=full?LY[full].split(','):Object.values(LY).join(',').split(',');
@@ -563,13 +575,13 @@ GEN.ly=()=>{const [full,short]=pick(LYP);
 function genRound(c){const g=GEN[c.id]();return{...c,prompt:g.prompt,entries:g.list.map(l=>{const al=g.alias?l.split('|'):[l];return{label:al[0],keys:al.map(norm)}})}}
 
 /* ================== 本機設定 ================== */
-const S={lives:3,time:12,easy:8,mid:6,hard:4,skips:1,stuck:3,hint:true,bonus:3,cards:true,cardp:5,players:['玩家 1','玩家 2','玩家 3'],cats:new Set(CATS.map(c=>c.id)),nick:''};
+const S={lives:3,time:12,easy:8,mid:6,hard:4,skips:1,stuck:3,hint:true,bonus:3,cards:true,cardp:5,bt:['brand','oldname','founder','song','country'],players:['玩家 1','玩家 2','玩家 3'],cats:new Set(CATS.map(c=>c.id)),nick:''};
 try{const sv=JSON.parse(localStorage.getItem('puffer-settings')||'null');if(sv){Object.assign(S,sv);S.cats=new Set((sv.cats||[]).filter(id=>CATS.some(c=>c.id===id)));CATS.forEach(c=>{if(!(sv.known||[]).includes(c.id))S.cats.add(c.id)});if(!S.cats.size)S.cats=new Set(CATS.map(c=>c.id))}}catch(e){}
 function saveS(){
   try{localStorage.setItem('puffer-settings',JSON.stringify({...S,cats:[...S.cats],known:CATS.map(c=>c.id)}))}catch(e){}
   if(MODE==='host'&&ST&&ST.ph==='lobby'){ST.set=pickSet();ST.cats=[...S.cats];pub()}
 }
-function pickSet(){return{lives:S.lives,time:S.time,easy:S.easy,mid:S.mid,hard:S.hard,skips:S.skips,stuck:S.stuck,hint:!!S.hint,bonus:S.bonus,cards:!!S.cards,cardp:S.cardp}}
+function pickSet(){return{lives:S.lives,time:S.time,easy:S.easy,mid:S.mid,hard:S.hard,skips:S.skips,stuck:S.stuck,hint:!!S.hint,bonus:S.bonus,cards:!!S.cards,cardp:S.cardp,bt:[...(S.bt||[])]}}
 
 function renderPlayers(){
   const L=$('plist');L.innerHTML='';
@@ -612,6 +624,11 @@ function syncHint(){$('hintBtn').textContent=S.hint?'開啟':'關閉';$('hintBtn
 $('hintBtn').onclick=()=>{S.hint=!S.hint;syncHint();saveS()};syncHint();
 function syncCard(){$('cardBtn').textContent=S.cards?'開啟':'關閉';$('cardBtn').setAttribute('aria-pressed',String(!!S.cards));$('cardpRow').hidden=!S.cards}
 $('cardBtn').onclick=()=>{S.cards=!S.cards;syncCard();saveS()};syncCard();
+(function(){const W=$('btypes');if(!Array.isArray(S.bt))S.bt=BTYPES.map(b=>b.id);
+  BTYPES.forEach(b=>{const l=document.createElement('label');l.className='cat';
+    l.innerHTML=`<input type="checkbox" id="bt-${b.id}"><span>${b.name}</span><span class="tag d-hard">${b.items.length} 題</span>`;
+    const cb=l.querySelector('input');cb.checked=S.bt.includes(b.id);
+    cb.onchange=()=>{S.bt=BTYPES.map(x=>x.id).filter(id=>$('bt-'+id).checked);saveS()};W.appendChild(l)})})();
 renderPlayers();
 $('localSettingsSlot').appendChild($('settingsBox'));
 $('nick').value=S.nick||'';
@@ -760,15 +777,17 @@ function skipFor(pi){
   pub();later(()=>{nextPlayer();startTurn()},600);
 }
 /* ---------- 回血搶答 ---------- */
-function bonusDue(){return ST.set.bonus>0&&ST.rn%ST.set.bonus===0&&ST.bonusAt!==ST.rn&&ST.ps.some(p=>p.l>0&&p.l<ST.set.lives)}
+function bonusDue(){return ST.set.bonus>0&&bonusTypes().length>0&&ST.rn%ST.set.bonus===0&&ST.bonusAt!==ST.rn&&ST.ps.some(p=>p.l>0&&p.l<ST.set.lives)}
 function afterRound(){if(bonusDue())startBonus();else newRound()}
 function bonusKey(){return 'b'+turnKey()}
 function startBonus(){
   ST.bonusAt=ST.rn;
-  let pool=BQ.map((q,i)=>i).filter(i=>!(ST.bqUsed||[]).includes(i));
-  if(!pool.length){ST.bqUsed=[];pool=BQ.map((q,i)=>i)}
-  const i=pick(pool);ST.bqUsed=[...(ST.bqUsed||[]),i];
-  ST.bq=i;ST.bqP=`「${BQ[i][0]}」是哪個品牌（公司）的產品？`;ST.blog=[];ST.lw='';
+  const used=Array.isArray(ST.bqUsed)?ST.bqUsed.filter(x=>typeof x==='string'):[];
+  const left=t=>BTYPES[t].items.map((q,i)=>i).filter(i=>!used.includes(t+':'+i));
+  let ts=bonusTypes().filter(t=>left(t).length);
+  if(!ts.length){used.length=0;ts=bonusTypes()}
+  const t=pick(ts),i=pick(left(t));used.push(t+':'+i);ST.bqUsed=used;
+  ST.bq=[t,i];ST.bqT=BTYPES[t].name;ST.bqP=BTYPES[t].ask.replace('%',BTYPES[t].items[i][0]);ST.blog=[];ST.lw='';
   ST.ph='bn';ST.bz=true;ST.bn=['回血搶答！','超難題。所有人一起搶答，第一個答對的人回復 1 條命'];
   H.frozen=BONUS_MS;pub();
   later(()=>{Object.assign(ST,{ph:'bonus',bz:false,pz:false,hint:'',msg:['','info']});ST.tn++;H.frozen=null;H.deadline=performance.now()+BONUS_MS;pub()},2400);
@@ -777,7 +796,7 @@ function bonusSubmit(pi,text){
   if(!ST||ST.ph!=='bonus'||ST.bz||ST.pz)return;
   const p=ST.ps[pi];if(!p||p.l<=0)return;
   text=clean(text,30);if(!text)return;
-  const n=norm(text),ok=BQ[ST.bq][1].split('|').map(norm).some(k=>k===n||(k.length>=2&&n.includes(k)));
+  const n=norm(text),ok=curBQ()[1].split('|').map(norm).some(k=>k===n||(k.length>=2&&n.includes(k)));
   if(ok)return bonusWin(pi);
   ST.blog.push([text.slice(0,12),pi]);if(ST.blog.length>12)ST.blog.shift();
   ST.lw=text;ST.lwp=pi;ST.msg=[`${p.n}：「${text}」不對`,'bad'];evt('bad');pub();
@@ -787,12 +806,12 @@ function bonusWin(pi){
   const p=ST.ps[pi];if(!p)return;
   ST.bz=true;H.frozen=leftNow();ST.lw='';
   const gain=p.l>0&&p.l<ST.set.lives;if(gain)p.l++;
-  ST.msg=[`${p.n} 搶答成功！答案是「${BQ[ST.bq][1].split('|')[0]}」`+(gain?'，回復 1 條命':'（生命已滿）'),'good'];evt('ok');
+  ST.msg=[`${p.n} 搶答成功！答案是「${curBQ()[1].split('|')[0]}」`+(gain?'，回復 1 條命':'（生命已滿）'),'good'];evt('ok');
   pub();later(newRound,2800);
 }
 function bonusTimeout(){
   ST.bz=true;H.frozen=0;ST.lw='';evt('boom');
-  ST.msg=[`時間到，沒人答對。答案是「${BQ[ST.bq][1].split('|')[0]}」`,'bad'];
+  ST.msg=[`時間到，沒人答對。答案是「${curBQ()[1].split('|')[0]}」`,'bad'];
   pub();later(newRound,2800);
 }
 function canBuzz(){
@@ -886,7 +905,7 @@ function renderState(){
   const BON=ST.ph==='bonus';
   $('promptTxt').textContent=BON?ST.bqP:(ST.ph==='turn'&&ST.cfx&&ST.cfx.flip?[...cat.prompt].reverse().join(''):cat.prompt);
   $('needDots').innerHTML=BON?'':Array.from({length:ST.nd},(_,i)=>`<i class="${i<ST.got?'on':''}"></i>`).join('');
-  $('needTxt').innerHTML=BON?'<span class="tag d-hard">回血搶答</span> 第一個答對的人回復 1 條命':`<span class="tag d-${cat.d}">${DIFF[cat.d]}</span> 已答 ${ST.got} / ${ST.nd}`;
+  $('needTxt').innerHTML=BON?`<span class="tag d-hard">回血搶答 · ${esc(ST.bqT||'產品→公司')}</span> 第一個答對的人回復 1 條命`:`<span class="tag d-${cat.d}">${DIFF[cat.d]}</span> 已答 ${ST.got} / ${ST.nd}`;
   $('used').innerHTML=(BON?(ST.blog||[]).map(x=>[x[0],x[1],1]):ST.log).map(x=>`<span class="${x[2]?'fail':''}">${esc(x[0])}<em>${esc(ST.ps[x[1]]?.n)}</em></span>`).join('');
   $('players').innerHTML=ST.ps.map((p,i)=>{
     const hearts=Array.from({length:ST.set.lives},(_,k)=>`<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.6 1.3 5.3 3.2 1.7-1.9 3.1-3.2 5.3-3.2 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z" fill="${k<p.l?'var(--coral)':'none'}" stroke="${k<p.l?'var(--coral)':'var(--shoal)'}" stroke-width="2"/></svg>`).join('');
@@ -967,7 +986,7 @@ function renderLobby(){
   $('lobbySummary').hidden=host;
   if(!host&&ST&&ST.set){
     const names=(ST.cats||[]).map(id=>CATS.find(c=>c.id===id)?.name).filter(Boolean);
-    $('summaryTxt').innerHTML=`<div>生命值 <b>${ST.set.lives}</b> · 作答時間 <b>${ST.set.time} 秒</b> · 跳過 <b>${ST.set.skips??0}</b> 次</div><div>連續 <b>${ST.set.stuck??3}</b> 次超時就換題 · 提示 <b>${ST.set.hint?'開':'關'}</b></div><div>回血搶答：<b>${ST.set.bonus?'每 '+ST.set.bonus+' 輪一次':'關閉'}</b> · 功能卡：<b>${ST.set.cards?'開啟（'+ST.set.cardp+'%）':'關閉'}</b></div><div>每輪答題數：簡單 <b>${ST.set.easy}</b>、普通 <b>${ST.set.mid}</b>、困難 <b>${ST.set.hard}</b></div><div>類別：${esc(names.join('、'))}</div>`;
+    $('summaryTxt').innerHTML=`<div>生命值 <b>${ST.set.lives}</b> · 作答時間 <b>${ST.set.time} 秒</b> · 跳過 <b>${ST.set.skips??0}</b> 次</div><div>連續 <b>${ST.set.stuck??3}</b> 次超時就換題 · 提示 <b>${ST.set.hint?'開':'關'}</b></div><div>回血搶答：<b>${ST.set.bonus?'每 '+ST.set.bonus+' 輪一次':'關閉'}</b> · 功能卡：<b>${ST.set.cards?'開啟（'+ST.set.cardp+'%）':'關閉'}</b></div>${ST.set.bonus&&ST.set.bt?`<div>加血題型：${esc(BTYPES.filter(b=>ST.set.bt.includes(b.id)).map(b=>b.name).join('、')||'無')}</div>`:''}<div>每輪答題數：簡單 <b>${ST.set.easy}</b>、普通 <b>${ST.set.mid}</b>、困難 <b>${ST.set.hard}</b></div><div>類別：${esc(names.join('、'))}</div>`;
   }else if(!host){$('summaryTxt').textContent='等待主持人…'}
 }
 
