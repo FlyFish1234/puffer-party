@@ -138,6 +138,10 @@ input[type=text]{background:var(--abyss);border:1.5px solid var(--shoal);border-
 .typing span{border-bottom:2px dashed var(--shoal);padding:0 6px}
 .hintline{text-align:center;color:var(--puffer);font-family:var(--display);font-size:20px;min-height:1.5em;letter-spacing:.12em}
 .dock .ghost{flex:none}
+.fxline{text-align:center;color:var(--coral);font-size:14px;min-height:1.4em}
+.cardbtn{background:var(--sea);border:1.5px solid var(--puffer);color:var(--puffer);border-radius:10px;padding:6px 12px;font-size:14px}
+.cardbtn:disabled{opacity:.45;cursor:not-allowed}
+.cardbtn small{display:block;font-family:var(--body);font-weight:400;font-size:11px;color:var(--mist)}
 .buzz{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}.buzz:empty{display:none}
 .you{font-size:11px;color:var(--abyss);background:var(--kelp);border-radius:999px;padding:0 6px;margin-left:4px;font-family:var(--body);vertical-align:2px}
 .invite{display:flex;gap:8px;margin-top:8px}.invite input{flex:1;min-width:0;font-size:13px}
@@ -227,6 +231,8 @@ body{margin:0}
     <div class="setting"><div>跳過次數<small>每人每局可以跳過幾次，跳過不扣命</small></div><div class="stepper" data-k="skips" data-min="0" data-max="5"><button aria-label="減少">−</button><output></output><button aria-label="增加">＋</button></div></div>
     <div class="setting"><div>連續超時就換題<small>同一題連續幾次超時，就公布答案並換下一題</small></div><div class="stepper" data-k="stuck" data-min="1" data-max="9"><button aria-label="減少">−</button><output></output><button aria-label="增加">＋</button></div></div>
     <div class="setting"><div>回血搶答<small>每幾輪出一題超難搶答，第一個答對的人回復 1 條命（0 為關閉）</small></div><div class="stepper" data-k="bonus" data-min="0" data-max="9"><button aria-label="減少">−</button><output></output><button aria-label="增加">＋</button></div></div>
+    <div class="setting"><div>功能卡<small>答對時有機率抽到卡片：時間減半、迴轉、遮住答案、完整提示、隱藏秒數、偷卡、題目反轉</small></div><button class="ghost" type="button" id="cardBtn"></button></div>
+    <div class="setting" id="cardpRow"><div>抽卡機率（%）<small>每答對一次抽到功能卡的機率，每人最多 3 張</small></div><div class="stepper" data-k="cardp" data-min="5" data-max="100" data-step="5"><button aria-label="減少">−</button><output></output><button aria-label="增加">＋</button></div></div>
     <div class="setting"><div>答題提示<small>時間過一半時，顯示一個答案的第一個字</small></div><button class="ghost" type="button" id="hintBtn"></button></div>
   </div>
   <div class="panel">
@@ -252,6 +258,7 @@ body{margin:0}
   </div>
   <div class="turn" id="turnTxt"></div>
   <div class="hintline" id="hint"></div>
+  <div class="fxline" id="fx"></div>
   <div class="typing" id="typing"></div>
   <form class="dock" id="ansForm" autocomplete="off">
     <input type="text" id="ans" placeholder="輸入答案，按 Enter" aria-label="答案" maxlength="30">
@@ -259,6 +266,7 @@ body{margin:0}
     <button class="ghost" type="button" id="skipBtn">跳過</button>
   </form>
   <div class="buzz" id="buzzRow"></div>
+  <div class="buzz" id="cardRow"></div>
   <div class="msg info" id="msg"></div>
   <div class="players" id="players"></div>
   <div class="used" id="used"></div>
@@ -454,6 +462,14 @@ const CATS=[
  {id:'asia',name:'亞洲國家',prompt:'說出一個亞洲國家',d:'mid',suf:['國'],a:'日本,韓國|南韓|大韓民國,北韓|朝鮮,中國|中華人民共和國,台灣|中華民國,蒙古,泰國,越南,寮國|老撾,柬埔寨,緬甸,馬來西亞,新加坡,印尼|印度尼西亞,菲律賓,汶萊|文萊,東帝汶,印度,巴基斯坦,孟加拉,尼泊爾,不丹,斯里蘭卡,馬爾地夫|馬爾代夫,阿富汗,伊朗,伊拉克,沙烏地阿拉伯|沙烏地|沙特阿拉伯|沙特,約旦,敘利亞,黎巴嫩,以色列,巴勒斯坦,卡達|卡塔爾,阿拉伯聯合大公國|阿聯酋|阿聯,阿曼,葉門|也門,科威特,巴林,土耳其,賽普勒斯|塞浦路斯,喬治亞|格魯吉亞,亞美尼亞,亞塞拜然|阿塞拜疆,哈薩克|哈薩克斯坦,烏茲別克|烏茲別克斯坦,吉爾吉斯|吉爾吉斯斯坦,塔吉克|塔吉克斯坦,土庫曼|土庫曼斯坦'},
  {id:'america',name:'美洲國家',prompt:'說出一個美洲國家',d:'hard',suf:['國'],a:'美國|美利堅,加拿大,墨西哥,瓜地馬拉|危地馬拉,貝里斯|伯利茲,薩爾瓦多,宏都拉斯|洪都拉斯,尼加拉瓜,哥斯大黎加|哥斯達黎加,巴拿馬,古巴,牙買加,海地,多明尼加|多明尼加共和國,巴哈馬,巴貝多|巴巴多斯,千里達及托巴哥|千里達|特立尼達和多巴哥,聖克里斯多福及尼維斯|聖克里斯多福,聖露西亞|聖盧西亞,聖文森及格瑞那丁|聖文森,格瑞那達|格林納達,多米尼克,安地卡及巴布達|安提瓜和巴布達,巴西,阿根廷,智利,秘魯,哥倫比亞,委內瑞拉,厄瓜多|厄瓜多爾,玻利維亞,巴拉圭,烏拉圭,蓋亞那|圭亞那,蘇利南|蘇里南'},
  {id:'jppref',name:'日本都道府縣',prompt:'說出一個日本的都道府縣',d:'hard',suf:['縣','府','都'],a:'北海道,青森,岩手,宮城,秋田,山形,福島,茨城,栃木|櫪木,群馬,埼玉,千葉,東京,神奈川,新潟,富山,石川,福井,山梨,長野,岐阜,靜岡,愛知,三重,滋賀,京都,大阪,兵庫,奈良,和歌山,鳥取,島根,岡山,廣島,山口,德島,香川,愛媛,高知,福岡,佐賀,長崎,熊本,大分,宮崎,鹿兒島,沖繩'},
+ {id:'tribe',name:'台灣原住民族',prompt:'說出一個台灣原住民族',d:'mid',suf:['族'],a:'阿美族,泰雅族,排灣族,布農族,卑南族,魯凱族,鄒族,賽夏族,雅美族|達悟族,邵族,噶瑪蘭族,太魯閣族,撒奇萊雅族,賽德克族,拉阿魯哇族,卡那卡那富族'},
+ {id:'univ',name:'台灣的大學',prompt:'說出一所台灣的大學',d:'mid',a:'台灣大學|台大|國立台灣大學|台灣|國立台灣,清華大學|清大|清華,陽明交通大學|陽明交大|交通大學|交大|陽明大學|陽明交通|交通|陽明,成功大學|成大|成功,政治大學|政大|政治,中央大學|中央,中興大學|中興,中山大學|中山,台灣師範大學|師大|台師大|台灣師範,台灣科技大學|台科大|台灣科技,台北科技大學|北科大|北科|台北科技,中正大學|中正,東華大學|東華,暨南國際大學|暨南大學|暨大|暨南國際|暨南,嘉義大學|嘉大|嘉義,高雄大學|高大|高雄,宜蘭大學|宜大|宜蘭,聯合大學|聯大|聯合,台北大學|北大|台北,海洋大學|海大|海洋,彰化師範大學|彰師大|彰師|彰化師範,高雄師範大學|高師大|高雄師範,台東大學|台東,金門大學|金門,屏東大學|屏大|屏東,台南大學|台南,台北教育大學|北教大|台北教育,台中教育大學|中教大|台中教育,台北藝術大學|北藝大|台北藝術,台灣藝術大學|台藝大|台灣藝術,台南藝術大學|南藝大|台南藝術,體育大學|國立體育大學|台灣體育運動大學|體大|體育|國立體育|台灣體育運動,雲林科技大學|雲科大|雲林科技,高雄科技大學|高科大|高雄科技,屏東科技大學|屏科大|屏東科技,虎尾科技大學|虎科大|虎尾科技,勤益科技大學|勤益|勤益科技,台北商業大學|北商|台北商業,輔仁大學|輔大|輔仁,東吳大學|東吳,淡江大學|淡江,中國文化大學|文化大學|文大|中國文化|文化,世新大學|世新,銘傳大學|銘傳,實踐大學|實踐,中原大學|中原,逢甲大學|逢甲,東海大學|東海,靜宜大學|靜宜,長庚大學|長庚,元智大學|元智,義守大學|義守,高雄醫學大學|高醫|高雄醫學,中國醫藥大學|中國醫藥,中山醫學大學|中山醫學,台北醫學大學|北醫|台北醫學,亞洲大學|亞大|亞洲,大同大學|大同,華梵大學|華梵,玄奘大學|玄奘,開南大學|開南,真理大學|真理,南華大學|南華,佛光大學|佛光,慈濟大學|慈濟,長榮大學|長榮,中華大學|中華,大葉大學|大葉,朝陽科技大學|朝陽|朝陽科技,明志科技大學|明志|明志科技,龍華科技大學|龍華|龍華科技,嶺東科技大學|嶺東|嶺東科技,崑山科技大學|崑山|崑山科技,南臺科技大學|南台科技大學|南台科大|南臺科技|南台科技,健行科技大學|健行|健行科技'},
+ {id:'market',name:'台灣夜市',prompt:'說出一個台灣的夜市',d:'mid',a:'士林夜市|士林,饒河街夜市|饒河夜市|饒河街|饒河,寧夏夜市|寧夏,華西街夜市|華西街,南機場夜市|南機場,臨江街夜市|通化夜市|通化街夜市|臨江街|通化|通化街,師大夜市|師大,公館夜市|公館,延三夜市|延三,遼寧街夜市|遼寧街,樂華夜市|樂華,三和夜市|三和,湳雅夜市|板橋湳雅夜市|湳雅|板橋湳雅,輔大花園夜市|輔大花園,基隆廟口夜市|廟口夜市|基隆夜市|基隆廟口|廟口|基隆,逢甲夜市|逢甲,一中街夜市|一中街|一中商圈,忠孝夜市|忠孝,中華路夜市|中華路,大東夜市|大東,花園夜市|花園,武聖夜市|武聖,六合夜市|六合,瑞豐夜市|瑞豐,光華夜市|光華,青年夜市|青年,凱旋夜市|凱旋,文化路夜市|文化路,羅東夜市|羅東,東大門夜市|東大門,自強夜市|自強,廟東夜市|豐原廟東夜市|廟東|豐原廟東,中壢觀光夜市|中原夜市|中壢觀光|中原,桃園觀光夜市|桃園觀光,興仁夜市|興仁,城隍廟夜市|新竹城隍廟|城隍廟,民族路夜市|屏東夜市|民族路|屏東,墾丁大街|墾丁夜市|墾丁,員林夜市|員林,竹北夜市|竹北,南雅夜市|南雅,寧夏路夜市|寧夏路,永和樂華夜市|永和樂華,新莊夜市|新莊,金山老街,深坑老街'},
+ {id:'mount',name:'台灣的山',prompt:'說出一座台灣的山',d:'mid',a:'玉山|玉山主峰,雪山|雪山主峰,秀姑巒山,南湖大山,中央尖山,大霸尖山,合歡山|合歡主峰|合歡北峰|合歡東峰|合歡西峰,奇萊山|奇萊主山|奇萊北峰|奇萊南峰,能高山|能高主峰,關山,北大武山|大武山,向陽山,三叉山,馬博拉斯山,大水窟山,郡大山,八通關山,桃山,品田山,白姑大山,畢祿山,羊頭山,志佳陽大山,卑南主山,阿里山,七星山,大屯山,觀音山,陽明山,太平山,拉拉山,八卦山,壽山|柴山,獅頭山,九九峰,火炎山,加里山,鳶嘴山,象山,五指山,大尖山,鳳凰山,大凍山,聖稜線,南橫三星|塔關山|關山嶺山,嘉明湖'},
+ {id:'mrt',name:'台北捷運站',prompt:'說出一個台北捷運站',d:'hard',suf:['站','捷運站'],a:'淡水,紅樹林,竹圍,關渡,忠義,復興崗,北投,新北投,奇岩,唭哩岸,石牌,明德,芝山,士林,劍潭,圓山,民權西路,雙連,中山,台北車站|台北,台大醫院,中正紀念堂,東門,大安森林公園,大安,信義安和,台北101|世貿|台北101世貿,象山,頂埔,永寧,土城,海山,亞東醫院,府中,板橋,新埔,江子翠,龍山寺,西門,善導寺,忠孝新生,忠孝復興,忠孝敦化,國父紀念館,市政府,永春,後山埤,昆陽,南港,南港展覽館,新店,新店區公所,七張,小碧潭,大坪林,景美,萬隆,公館,台電大樓,古亭,小南門,北門,松江南京,南京復興,台北小巨蛋|小巨蛋,南京三民,松山,南勢角,景安,永安市場,頂溪,行天宮,中山國小,大橋頭,台北橋,菜寮,三重,先嗇宮,頭前庄,新莊,輔大,丹鳳,迴龍,三重國小,三和國中,徐匯中學,三民高中,蘆洲,動物園,木柵,萬芳社區,萬芳醫院,辛亥,麟光,六張犁,科技大樓,中山國中,松山機場,大直,劍南路,西湖,港墘,文德,內湖,大湖公園,葫洲,東湖,南港軟體園區,十四張,秀朗橋,景平,中和,橋和,中原,板新,新埔民生,幸福,新北產業園區'},
+ {id:'novel',name:'四大名著人物',prompt:'說出一位四大名著（西遊記、三國演義、水滸傳、紅樓夢）裡的人物',d:'hard',a:'孫悟空|齊天大聖|美猴王,豬八戒|豬悟能,沙悟淨|沙和尚|沙僧,唐三藏|唐僧|玄奘,白龍馬,牛魔王,鐵扇公主|羅剎女,紅孩兒,白骨精,觀音菩薩|觀音|觀世音菩薩,如來佛祖|如來,玉皇大帝|玉帝,太上老君,二郎神|楊戩,哪吒,托塔天王|李靖,嫦娥,蜘蛛精,金角大王,銀角大王,賈寶玉,林黛玉,薛寶釵,王熙鳳,賈母,史湘雲,妙玉,賈探春|探春,賈迎春|迎春,賈惜春|惜春,賈元春|元春,襲人,晴雯,平兒,劉姥姥,賈政,賈璉,秦可卿,香菱,宋江,武松,林沖,魯智深,李逵,吳用,盧俊義,公孫勝,燕青,花榮,楊志,史進,時遷,潘金蓮,武大郎,西門慶,高俅,晁蓋,孫二娘,扈三娘,戴宗,阮小二,阮小五,阮小七,張順,柴進,秦明,呼延灼,關勝,劉備,關羽|關公|關雲長,張飛,諸葛亮|孔明,曹操,孫權,周瑜,趙雲|趙子龍,呂布,貂蟬,司馬懿,黃忠,馬超,魏延,姜維,黃蓋,魯肅,甘寧,陸遜,孫策,袁紹,董卓,華佗,龐統,徐庶,典韋,許褚,夏侯惇,張遼,關平,周倉,孫尚香,大喬,小喬,劉禪|阿斗,曹丕,曹植'},
+ {id:'amcap',name:'美洲首都',prompt:'說出一個美洲國家的首都',d:'hard',a:'華盛頓|華盛頓特區|華府,渥太華,墨西哥城,哈瓦那,巴拿馬城,聖荷西,瓜地馬拉市|瓜地馬拉城|危地馬拉城,馬拿瓜|馬納瓜,德古西加巴|特古西加爾巴,聖薩爾瓦多,貝爾墨潘|貝爾莫潘,太子港,聖多明哥|聖多明各,京斯敦|金斯敦,拿索|拿騷,巴西利亞,布宜諾斯艾利斯,聖地牙哥|聖地亞哥,利馬,波哥大,卡拉卡斯,基多,拉巴斯|蘇克雷,亞松森,蒙特維多|蒙得維的亞,喬治城,巴拉馬利波|帕拉馬里博'},
+ {id:'oceania',name:'大洋洲國家',prompt:'說出一個大洋洲國家',d:'hard',suf:['國'],a:'澳洲|澳大利亞,紐西蘭|新西蘭,巴布亞紐幾內亞|巴紐,斐濟,索羅門群島|所羅門群島,萬那杜|瓦努阿圖,薩摩亞,東加|湯加,吐瓦魯|圖瓦盧,吉里巴斯|基里巴斯,諾魯|瑙魯,帛琉|帕勞,馬紹爾群島,密克羅尼西亞|密克羅尼西亞聯邦'},
  {id:'zhu',name:'注音開頭造詞',d:'easy',gen:1,hint:'first'},
  {id:'head',name:'首字造詞',d:'easy',gen:1,hint:'none'},
  {id:'tail',name:'尾字造詞',d:'mid',gen:1,hint:'none'},
@@ -527,13 +543,13 @@ GEN.ly=()=>{const [full,short]=pick(LYP);
 function genRound(c){const g=GEN[c.id]();return{...c,prompt:g.prompt,entries:g.list.map(l=>{const al=g.alias?l.split('|'):[l];return{label:al[0],keys:al.map(norm)}})}}
 
 /* ================== 本機設定 ================== */
-const S={lives:3,time:12,easy:8,mid:6,hard:4,skips:1,stuck:3,hint:true,bonus:3,players:['玩家 1','玩家 2','玩家 3'],cats:new Set(CATS.map(c=>c.id)),nick:''};
+const S={lives:3,time:12,easy:8,mid:6,hard:4,skips:1,stuck:3,hint:true,bonus:3,cards:true,cardp:5,players:['玩家 1','玩家 2','玩家 3'],cats:new Set(CATS.map(c=>c.id)),nick:''};
 try{const sv=JSON.parse(localStorage.getItem('puffer-settings')||'null');if(sv){Object.assign(S,sv);S.cats=new Set((sv.cats||[]).filter(id=>CATS.some(c=>c.id===id)));CATS.forEach(c=>{if(!(sv.known||[]).includes(c.id))S.cats.add(c.id)});if(!S.cats.size)S.cats=new Set(CATS.map(c=>c.id))}}catch(e){}
 function saveS(){
   try{localStorage.setItem('puffer-settings',JSON.stringify({...S,cats:[...S.cats],known:CATS.map(c=>c.id)}))}catch(e){}
   if(MODE==='host'&&ST&&ST.ph==='lobby'){ST.set=pickSet();ST.cats=[...S.cats];pub()}
 }
-function pickSet(){return{lives:S.lives,time:S.time,easy:S.easy,mid:S.mid,hard:S.hard,skips:S.skips,stuck:S.stuck,hint:!!S.hint,bonus:S.bonus}}
+function pickSet(){return{lives:S.lives,time:S.time,easy:S.easy,mid:S.mid,hard:S.hard,skips:S.skips,stuck:S.stuck,hint:!!S.hint,bonus:S.bonus,cards:!!S.cards,cardp:S.cardp}}
 
 function renderPlayers(){
   const L=$('plist');L.innerHTML='';
@@ -552,8 +568,9 @@ document.querySelectorAll('.stepper').forEach(st=>{
   const k=st.dataset.k,mn=+st.dataset.min,mx=+st.dataset.max,out=st.querySelector('output');
   const [dn,up]=st.querySelectorAll('button');
   const show=()=>out.textContent=S[k];
-  dn.onclick=()=>{S[k]=Math.max(mn,S[k]-1);show();saveS()};
-  up.onclick=()=>{S[k]=Math.min(mx,S[k]+1);show();saveS()};
+  const sp=+(st.dataset.step||1);
+  dn.onclick=()=>{S[k]=Math.max(mn,S[k]-sp);show();saveS()};
+  up.onclick=()=>{S[k]=Math.min(mx,S[k]+sp);show();saveS()};
   show();
 });
 (function(){
@@ -573,6 +590,8 @@ $('catNone').onclick=()=>{S.cats=new Set();syncCats();saveS()};
 syncCats();
 function syncHint(){$('hintBtn').textContent=S.hint?'開啟':'關閉';$('hintBtn').setAttribute('aria-pressed',String(!!S.hint))}
 $('hintBtn').onclick=()=>{S.hint=!S.hint;syncHint();saveS()};syncHint();
+function syncCard(){$('cardBtn').textContent=S.cards?'開啟':'關閉';$('cardBtn').setAttribute('aria-pressed',String(!!S.cards));$('cardpRow').hidden=!S.cards}
+$('cardBtn').onclick=()=>{S.cards=!S.cards;syncCard();saveS()};syncCard();
 renderPlayers();
 $('localSettingsSlot').appendChild($('settingsBox'));
 $('nick').value=S.nick||'';
@@ -625,9 +644,9 @@ function startGame(roster){
   clearLater();
   const set=pickSet();
   ST={g:Math.random().toString(36).slice(2,7),ph:'bn',set,cats:[...S.cats],
-      ps:roster.map(r=>({n:r.n,pe:r.pe||null,l:set.lives,s:0,o:0,k:set.skips})),
+      ps:roster.map(r=>({n:r.n,pe:r.pe||null,l:set.lives,s:0,o:0,k:set.skips,cards:[]})),
       cur:0,rn:0,cat:null,nd:0,got:0,used:[],cu:[],log:[],tn:0,left:0,pz:false,bz:true,
-      ev:{i:0,k:''},bn:['',''],msg:['','info'],lw:'',el:0,ct:0,hint:''};
+      ev:{i:0,k:''},bn:['',''],msg:['','info'],lw:'',el:0,ct:0,hint:'',dir:1,nx:{},flip:[],cfx:{}};
   newRound();
 }
 function aliveN(){return ST.ps.filter(p=>p.l>0).length}
@@ -644,14 +663,18 @@ function newRound(){
 }
 function startTurn(){
   if(ST.ps[ST.cur].l<=0)nextPlayer();
-  Object.assign(ST,{ph:'turn',bz:false,pz:false,lw:'',hint:'',msg:['','info']});
+  Object.assign(ST,{ph:'turn',bz:false,pz:false,lw:'',hint:'',hf:0,msg:['','info']});
   ST.tn++;
-  H.frozen=null;H.deadline=performance.now()+ST.set.time*1000;
+  ST.cfx=ST.nx||{};ST.nx={};
+  if((ST.flip||[]).includes(ST.cur)){ST.cfx.flip=1;ST.flip=ST.flip.filter(i=>i!==ST.cur)}
+  ST.tt=ST.cfx.cut?Math.max(3000,ST.set.time*500):ST.set.time*1000;
+  H.frozen=null;H.deadline=performance.now()+ST.tt;
   pub();
 }
 function nextPlayer(){
   const n=ST.ps.length;
-  for(let k=1;k<=n;k++){const j=(ST.cur+k)%n;if(ST.ps[j].l>0){ST.cur=j;return}}
+  const d=ST.dir||1;
+  for(let k=1;k<=n;k++){const j=((ST.cur+d*k)%n+n)%n;if(ST.ps[j].l>0){ST.cur=j;return}}
 }
 function pushLog(t,pi,f){ST.log.push([String(t).slice(0,16),pi,f?1:0]);if(ST.log.length>14)ST.log.shift()}
 function evt(k){ST.ev={i:(ST.ev.i||0)+1,k}}
@@ -691,6 +714,7 @@ function accept(label,idx){
   ST.got++;p.s++;ST.ct=0;
   pushLog(label,ST.cur,0);evt('ok');
   ST.msg=[`${p.n} 答對：${label}`,'good'];ST.lw='';
+  if(ST.set.cards&&(p.cards||(p.cards=[])).length<3&&Math.random()*100<ST.set.cardp){const cd=pick(Object.keys(CARDS));p.cards.push(cd);ST.msg[0]+=`，抽到功能卡「${CARDS[cd].n}」！`}
   pub();
   later(()=>{
     const done=ST.got>=ST.nd||ST.used.length>=cat.entries.length;
@@ -756,6 +780,51 @@ function canBuzz(){
   if(MODE==='local')return true;
   const me=ST.ps.find(p=>p.pe===myPeer);return !!me&&me.l>0;
 }
+
+/* ---------- 功能卡 ---------- */
+const CARDS={cut:{n:'時間減半',d:'下一位的作答時間減半'},rev:{n:'迴轉',d:'輪流順序反過來'},cover:{n:'遮住答案',d:'下一位看不到已回答過的答案'},full:{n:'完整提示',d:'馬上看到一個完整答案'},blind:{n:'隱藏秒數',d:'下一位看不到剩餘秒數'},steal:{n:'偷卡',d:'隨機偷走別人的一張卡'},flip:{n:'題目反轉',d:'指定一人，他下一題的題目文字會反過來'}};
+let cardSel=null;
+function useCard(pi,ci,tgt){
+  if(!ST||ST.ph!=='turn'||ST.bz||ST.pz||pi!==ST.cur||!ST.set.cards)return;
+  const p=ST.ps[pi],id=p.cards&&p.cards[ci];if(!id||!CARDS[id])return;
+  const vs=ST.ps.map((q,i)=>i).filter(i=>i!==pi&&ST.ps[i].cards&&ST.ps[i].cards.length);
+  if(id==='steal'&&!vs.length){ST.msg=['現在沒有人有卡可以偷','bad'];pub();return}
+  if(id==='flip'&&!(typeof tgt==='number'&&ST.ps[tgt]&&ST.ps[tgt].l>0))return;
+  p.cards.splice(ci,1);
+  ST.nx=ST.nx||{};ST.flip=ST.flip||[];
+  let m='';
+  if(id==='cut'){ST.nx.cut=1;m='下一位的作答時間減半'}
+  else if(id==='rev'){ST.dir=-(ST.dir||1);m='輪流順序反過來了'}
+  else if(id==='cover'){ST.nx.cover=1;m='下一位看不到已回答的答案'}
+  else if(id==='blind'){ST.nx.blind=1;m='下一位看不到剩餘秒數'}
+  else if(id==='full'){const c=curCat();let pool=c.entries.filter((e,i)=>!ST.used.includes(i));if(c.gen)pool=pool.slice(0,80);if(pool.length){ST.hint=pick(pool).label;ST.hf=1}m='看到一個完整答案'}
+  else if(id==='steal'){const v=pick(vs),q=ST.ps[v],k=Math.floor(Math.random()*q.cards.length),got=q.cards.splice(k,1)[0];p.cards.push(got);m=`偷走了 ${q.n} 的「${CARDS[got].n}」`}
+  else if(id==='flip'){if(!ST.flip.includes(tgt))ST.flip.push(tgt);m=`${ST.ps[tgt].n} 下一題的題目會反過來`}
+  ST.msg=[`${p.n} 使用「${CARDS[id].n}」：${m}`,'info'];evt('card');pub();
+}
+function sendCard(ci,tgt){
+  cardSel=null;
+  if(MODE==='client'){R&&R.presence({ans:{card:ci,tgt:typeof tgt==='number'?tgt:-1,k:turnKey(),n:++ansSeq}}).catch(()=>{})}
+  else useCard(ST.cur,ci,tgt);
+}
+function renderCards(can,BON){
+  const cr=$('cardRow');cr.innerHTML='';
+  if(!ST.set.cards||BON||ST.ph!=='turn')return;
+  const meI=MODE==='local'?ST.cur:ST.ps.findIndex(p=>p.pe===myPeer),me=ST.ps[meI];
+  if(!me||!me.cards||!me.cards.length)return;
+  const lab=document.createElement('span');lab.className='note';lab.textContent=MODE==='local'?`${me.n} 的功能卡：`:'你的功能卡：';cr.appendChild(lab);
+  if(cardSel!=null&&can){
+    ST.ps.forEach((p,i)=>{if(i===meI||p.l<=0)return;const b=document.createElement('button');b.type='button';b.className='cardbtn';b.textContent=`對 ${p.n} 用題目反轉`;b.onclick=()=>sendCard(cardSel,i);cr.appendChild(b)});
+    const x=document.createElement('button');x.type='button';x.className='ghost';x.textContent='取消';x.onclick=()=>{cardSel=null;renderState()};cr.appendChild(x);return;
+  }
+  me.cards.forEach((id,ci)=>{
+    const c=CARDS[id];if(!c)return;
+    const b=document.createElement('button');b.type='button';b.className='cardbtn';b.disabled=!can;
+    b.innerHTML=`${esc(c.n)}<small>${esc(c.d)}</small>`;
+    b.onclick=()=>{if(id==='flip'){cardSel=ci;renderState()}else sendCard(ci)};
+    cr.appendChild(b);
+  });
+}
 function gameOver(){clearLater();ST.ph='over';ST.bz=true;pub()}
 function togglePause(){
   if(!ST||(ST.ph!=='turn'&&ST.ph!=='bonus')||ST.bz)return;
@@ -770,7 +839,7 @@ setInterval(()=>{
   if(ST.ph!=='turn')return;
   if(leftNow()<=0)return explode();
   const hc=curCat();
-  if(ST.set.hint&&!ST.hint&&hc&&hc.hint!=='none'&&leftNow()<ST.set.time*500){
+  if(ST.set.hint&&!ST.hint&&hc&&hc.hint!=='none'&&leftNow()<(ST.tt||ST.set.time*1000)/2){
     const cat=hc;let pool=cat.entries.filter((e,i)=>!ST.used.includes(i));if(cat.gen)pool=pool.slice(0,80);
     if(pool.length){const ch=[...pool[Math.floor(Math.random()*pool.length)].label],k=cat.hint==='second'?2:1;ST.hint=ch.slice(0,k).join('')+'○'.repeat(Math.max(0,ch.length-k));pub()}
   }
@@ -795,17 +864,20 @@ function renderState(){
   $('bannerTitle').textContent=ST.bn[0];$('bannerSub').textContent=ST.bn[1];
   $('roundNo').textContent=`第 ${ST.rn} 輪`;
   const BON=ST.ph==='bonus';
-  $('promptTxt').textContent=BON?ST.bqP:cat.prompt;
+  $('promptTxt').textContent=BON?ST.bqP:(ST.ph==='turn'&&ST.cfx&&ST.cfx.flip?[...cat.prompt].reverse().join(''):cat.prompt);
   $('needDots').innerHTML=BON?'':Array.from({length:ST.nd},(_,i)=>`<i class="${i<ST.got?'on':''}"></i>`).join('');
   $('needTxt').innerHTML=BON?'<span class="tag d-hard">回血搶答</span> 第一個答對的人回復 1 條命':`<span class="tag d-${cat.d}">${DIFF[cat.d]}</span> 已答 ${ST.got} / ${ST.nd}`;
   $('used').innerHTML=(BON?(ST.blog||[]).map(x=>[x[0],x[1],1]):ST.log).map(x=>`<span class="${x[2]?'fail':''}">${esc(x[0])}<em>${esc(ST.ps[x[1]]?.n)}</em></span>`).join('');
   $('players').innerHTML=ST.ps.map((p,i)=>{
     const hearts=Array.from({length:ST.set.lives},(_,k)=>`<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.7 4.5c2.2 0 3.6 1.3 5.3 3.2 1.7-1.9 3.1-3.2 5.3-3.2 3.7 0 5.8 3.8 4.3 7.3C19.5 16.4 12 21 12 21z" fill="${k<p.l?'var(--coral)':'none'}" stroke="${k<p.l?'var(--coral)':'var(--shoal)'}" stroke-width="2"/></svg>`).join('');
     const you=MODE!=='local'&&p.pe===myPeer?'<span class="you">你</span>':'';
-    return `<div class="pl ${!BON&&i===ST.cur&&p.l>0?'cur':''} ${p.l<=0?'out':''}"><span class="nm">${esc(p.n)}${you}</span><span class="hp">${hearts}</span><span class="sc">答對 ${p.s} 題${ST.set.skips?` · 跳過 ${p.k||0}`:''}</span></div>`;
+    return `<div class="pl ${!BON&&i===ST.cur&&p.l>0?'cur':''} ${p.l<=0?'out':''}"><span class="nm">${esc(p.n)}${you}</span><span class="hp">${hearts}</span><span class="sc">答對 ${p.s} 題${ST.set.skips?` · 跳過 ${p.k||0}`:''}${ST.set.cards?` · 卡 ${(p.cards||[]).length}`:''}</span></div>`;
   }).join('');
   const cp=ST.ps[ST.cur];
   const mine=myTurn()||(MODE!=='local'&&cp&&cp.pe===myPeer);
+  if(!BON&&ST.ph==='turn'&&ST.cfx&&ST.cfx.cover)$('used').innerHTML='<span class="fail">已回答的答案被遮住了</span>';
+  const fx=ST.ph==='turn'&&ST.cfx?[ST.cfx.cut&&'時間減半',ST.cfx.blind&&'看不到秒數',ST.cfx.cover&&'答案被遮住',ST.cfx.flip&&'題目反轉'].filter(Boolean):[];
+  $('fx').textContent=fx.length?'本回合效果：'+fx.join('、'):'';
   if(BON){const meP=ST.ps.find(p=>p.pe===myPeer);$('turnTxt').innerHTML=MODE!=='local'&&meP&&meP.l<=0?'你已淘汰，觀戰中':'<b>所有人都可以搶答！</b>'}
   else $('turnTxt').innerHTML=MODE!=='local'&&mine?'<b>輪到你了！</b>':`河豚傳給 <b>${esc(cp?.n)}</b>`;
   // 訊息 + 裁判按鈕
@@ -821,11 +893,12 @@ function renderState(){
   const can=BON?canBuzz():myTurn();
   $('ans').disabled=!can;$('sendBtn').disabled=!can;
   const sk=(cp&&cp.k)||0;$('skipBtn').hidden=!ST.set.skips||BON;$('skipBtn').disabled=!can||sk<=0;$('skipBtn').textContent=`跳過 ${sk}`;
-  $('hint').textContent=ST.hint&&!BON?'提示：'+ST.hint:'';
+  $('hint').textContent=ST.hint&&!BON?(ST.hf?'完整提示：':'提示：')+ST.hint:'';
+  renderCards(can,BON);
   const bz=$('buzzRow');bz.innerHTML='';
   if(BON&&MODE==='local'&&can){ST.ps.forEach((p,i)=>{if(p.l<=0)return;const b=document.createElement('button');b.type='button';b.className='ghost';b.textContent=p.n+' 答';b.onclick=()=>{const t=clean($('ans').value,30);if(t)bonusSubmit(i,t)};bz.appendChild(b)})}
   $('ans').placeholder=can?(BON&&MODE==='local'?'輸入答案，再按答題者的名字':'輸入答案，按 Enter'):(ST.pz?'暫停中':'等待其他人作答…');
-  if(ST.tn!==lastTn){lastTn=ST.tn;$('ans').value='';if(can)$('ans').focus()}
+  if(ST.tn!==lastTn){lastTn=ST.tn;cardSel=null;$('ans').value='';if(can)$('ans').focus()}
   // 事件動畫
   if(ST.ev.i!==lastEv){
     lastEv=ST.ev.i;
@@ -874,7 +947,7 @@ function renderLobby(){
   $('lobbySummary').hidden=host;
   if(!host&&ST&&ST.set){
     const names=(ST.cats||[]).map(id=>CATS.find(c=>c.id===id)?.name).filter(Boolean);
-    $('summaryTxt').innerHTML=`<div>生命值 <b>${ST.set.lives}</b> · 作答時間 <b>${ST.set.time} 秒</b> · 跳過 <b>${ST.set.skips??0}</b> 次</div><div>連續 <b>${ST.set.stuck??3}</b> 次超時就換題 · 提示 <b>${ST.set.hint?'開':'關'}</b></div><div>回血搶答：<b>${ST.set.bonus?'每 '+ST.set.bonus+' 輪一次':'關閉'}</b></div><div>每輪答題數：簡單 <b>${ST.set.easy}</b>、普通 <b>${ST.set.mid}</b>、困難 <b>${ST.set.hard}</b></div><div>類別：${esc(names.join('、'))}</div>`;
+    $('summaryTxt').innerHTML=`<div>生命值 <b>${ST.set.lives}</b> · 作答時間 <b>${ST.set.time} 秒</b> · 跳過 <b>${ST.set.skips??0}</b> 次</div><div>連續 <b>${ST.set.stuck??3}</b> 次超時就換題 · 提示 <b>${ST.set.hint?'開':'關'}</b></div><div>回血搶答：<b>${ST.set.bonus?'每 '+ST.set.bonus+' 輪一次':'關閉'}</b> · 功能卡：<b>${ST.set.cards?'開啟（'+ST.set.cardp+'%）':'關閉'}</b></div><div>每輪答題數：簡單 <b>${ST.set.easy}</b>、普通 <b>${ST.set.mid}</b>、困難 <b>${ST.set.hard}</b></div><div>類別：${esc(names.join('、'))}</div>`;
   }else if(!host){$('summaryTxt').textContent='等待主持人…'}
 }
 
@@ -970,13 +1043,13 @@ function hostPeers(ch){
   // 玩家送出的答案
   for(const p of [...ch.joined,...ch.updated]){
     const a=p.presence&&p.presence.ans;
-    if(!a||p.sameTab||(a.skip!==1&&typeof a.t!=='string'))continue;
+    if(!a||p.sameTab||(a.skip!==1&&typeof a.t!=='string'&&typeof a.card!=='number'))continue;
     if((seen[p.peer]||0)>=a.n)continue;
     seen[p.peer]=a.n;
     if(ST&&ST.ph==='bonus'&&a.k===bonusKey()&&typeof a.t==='string'){const pi=ST.ps.findIndex(x=>x.pe===p.peer);if(pi>=0)bonusSubmit(pi,a.t)}
     else if(ST&&ST.ph==='turn'&&a.k===turnKey()){
       const pi=ST.ps.findIndex(x=>x.pe===p.peer);
-      if(pi>=0)(a.skip===1?skipFor(pi):submitFor(pi,a.t));
+      if(pi>=0)(a.skip===1?skipFor(pi):typeof a.card==='number'?useCard(pi,a.card,a.tgt):submitFor(pi,a.t));
     }
   }
   // 有人離線
@@ -1017,11 +1090,12 @@ function clientPeers(ch){
 function loop(){
   requestAnimationFrame(loop);
   if(!ST||(ST.ph!=='turn'&&ST.ph!=='bn'&&ST.ph!=='bonus'))return;
-  const T=ST.ph==='bonus'?BONUS_MS:ST.set.time*1000,left=getLeft();
+  const T=ST.ph==='bonus'?BONUS_MS:(ST.tt||ST.set.time*1000),left=getLeft();
   setPuff(ST.ph==='bn'?0:Math.min(1,1-left/T));
   const sec=left/1000;
   $('clock').textContent=ST.ph==='bn'?'':sec.toFixed(1)+' 秒';
   $('clock').classList.toggle('hot',sec<=3);
+  if(ST.ph==='turn'&&ST.cfx&&ST.cfx.blind){$('clock').textContent='？？ 秒';$('clock').classList.remove('hot');setPuff(.35)}
 }
 requestAnimationFrame(loop);
 setPuff(.15);
